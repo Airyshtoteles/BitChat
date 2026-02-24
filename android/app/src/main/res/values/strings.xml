@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">BitChat</string>
+    <string name="onboarding_title">Welcome to BitChat</string>
+    <string name="onboarding_subtitle">Offline mesh chat for when connectivity fails</string>
+    <string name="onboarding_generating">Generating your identity&#8230;</string>
+    <string name="onboarding_ready">Your identity is ready</string>
+    <string name="onboarding_continue">Get Started</string>
+    <string name="chat_list_title">Chats</string>
+    <string name="chat_list_empty">No conversations yet</string>
+    <string name="chat_list_empty_hint">Add a contact to start chatting</string>
+    <string name="conversation_input_hint">Type a message&#8230;</string>
+    <string name="contacts_title">Contacts</string>
+    <string name="add_contact_title">Add Contact</string>
+    <string name="add_contact_scan_qr">Scan QR Code</string>
+    <string name="add_contact_show_qr">Show My QR Code</string>
+    <string name="add_contact_manual">Enter Public Key</string>
+    <string name="add_contact_hex_hint">64-character hex public key</string>
+    <string name="add_contact_alias_hint">Nickname (optional)</string>
+    <string name="add_contact_button">Add Contact</string>
+    <string name="qr_title">My QR Code</string>
+    <string name="qr_scan_title">Scan QR Code</string>
+    <string name="qr_scan_instruction">Point camera at a BitChat QR code</string>
+    <string name="profile_title">Profile</string>
+    <string name="profile_public_key">Public Key</string>
+    <string name="profile_copied">Public key copied</string>
+    <string name="profile_show_qr">Show QR Code</string>
+    <string name="send">Send</string>
+    <string name="back">Back</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="error_send_failed">Message send failed</string>
+    <string name="error_invalid_key">Invalid public key format</string>
+    <string name="notification_channel_name">BitChat Mesh</string>
+    <string name="notification_content">Mesh network active</string>
+    <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
+</resources>
