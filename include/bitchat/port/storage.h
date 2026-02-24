@@ -30,12 +30,16 @@ typedef struct bc_storage {
     int (*store_message)(struct bc_storage *self, const bc_message_t *msg);
 
     /**
-     * @brief Retrieve all pending messages destined for a given peer.
+     * @brief Retrieve pending messages, optionally filtered by recipient.
+     *
+     * If @p peer_pubkey is non-NULL, returns only messages destined for
+     * that specific recipient. If @p peer_pubkey is NULL, returns ALL
+     * non-expired pending messages (used for gossip-style broadcast sync).
      *
      * The caller owns the returned array and each message within it.
      * Free each message with @ref bc_message_destroy, then free the array.
      *
-     * @param peer_pubkey  Recipient public key to filter by.
+     * @param peer_pubkey  Recipient public key to filter by, or NULL for all.
      * @param msgs_out     Pointer to output array.
      * @param count        Number of messages returned.
      * @return BC_OK or negative error code.

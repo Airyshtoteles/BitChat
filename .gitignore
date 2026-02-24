@@ -15,9 +15,30 @@ cmake-build-*/
 *.so
 *.dylib
 
+# Keep prebuilt Android native libraries
+!android/app/src/main/jniLibs/**/*.a
+!android/app/src/main/jniLibs/**/*.so
+
 # OS
 .DS_Store
 Thumbs.db
 
 # Test output
 Testing/
+
+# CLI simulator runtime files
+node_*.db
+node_*.db-shm
+node_*.db-wal
+node_*.key
+
+# Android
+android/local.properties
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks

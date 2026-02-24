@@ -36,6 +36,9 @@ extern "C" {
 /** Default dedup entry max age in seconds (10 minutes). */
 #define BC_DEFAULT_DEDUP_AGE    600
 
+/** Store-and-forward rebroadcast interval in seconds. */
+#define BC_SF_REBROADCAST_SEC   3
+
 /**
  * @brief Router configuration.
  */
@@ -84,6 +87,9 @@ typedef struct bc_router {
     /* Delivery callback. */
     bc_on_message_fn on_message;
     void            *on_message_userdata;
+
+    /* Store-and-forward rate limiting. */
+    uint64_t last_sf_tick;  /**< Last rebroadcast timestamp (seconds).  */
 } bc_router_t;
 
 /**

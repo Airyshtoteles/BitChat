@@ -199,10 +199,16 @@ int bc_router_broadcast(bc_router_t *router, const bc_message_t *msg)
     }
 
     /* Try to send to peers. */
-    rc = forward_to_peers(router, buf, out_len);
+    forward_to_peers(router, buf, out_len);
 
-    /* If no peers reachable, store for later. */
-    if (rc != BC_OK && router->storage && router->storage->store_message) {
+    /* Unconditionally persist for store-and-forward.
+     *
+     * UDP sendto() always reports success even when the target is
+     * offline, so we cannot trust the return value to decide whether
+     * to store.  Every outgoing message goes into SQLite; the
+     * rebroadcast tick will keep retrying until evict_expired()
+     * cleans it up.  INSERT OR IGNORE ensures no duplicates. */
+    if (router->storage && router->storage->store_message) {
         router->storage->store_message(router->storage, msg);
     }
 
@@ -246,18 +252,21 @@ int bc_router_receive(bc_router_t *router,
         return BC_OK;
     }
 
-    /* Not for us — re-serialize with decremented TTL and forward. */
+    /* Not for us — store unconditionally, then forward.
+     *
+     * Same rationale as bc_router_broadcast: UDP sendto() always
+     * returns success regardless of peer liveness, so we persist
+     * first to guarantee store-and-forward reliability. */
+    if (router->storage && router->storage->store_message) {
+        router->storage->store_message(router->storage, msg);
+    }
+
     size_t needed = BC_MESSAGE_HEADER_SIZE + msg->payload_len;
     uint8_t *buf = malloc(needed);
     if (buf) {
         size_t out_len;
         if (bc_message_serialize(msg, buf, needed, &out_len) == BC_OK) {
-            int rc = forward_to_peers(router, buf, out_len);
-            /* Store if forwarding failed (no peers). */
-            if (rc != BC_OK && router->storage &&
-                router->storage->store_message) {
-                router->storage->store_message(router->storage, msg);
-            }
+            forward_to_peers(router, buf, out_len);
         }
         free(buf);
     }
@@ -311,18 +320,28 @@ void bc_router_tick(bc_router_t *router)
         }
     }
 
-    /* 3. Retry store-and-forward for known peers. */
-    if (router->storage && router->storage->get_pending) {
-        for (size_t i = 0; i < router->peer_count; i++) {
-            bc_message_t **msgs = NULL;
-            size_t count = 0;
+    /* 3. Broadcast all stored messages to connected peers.
+     *
+     * Rate-limited to once every BC_SF_REBROADCAST_SEC seconds to avoid
+     * flooding the UDP transport on every tick (100ms).
+     *
+     * Messages are NOT deleted after sending — UDP is connectionless and
+     * sendto() returns success even if the target is offline.  Instead,
+     * messages expire naturally via evict_expired(). */
+    uint64_t now = (uint64_t)time(NULL);
 
-            if (router->storage->get_pending(router->storage,
-                                             router->peers[i].pubkey,
-                                             &msgs, &count) != BC_OK) {
-                continue;
-            }
+    if (router->storage && router->storage->get_pending &&
+        router->peer_count > 0 &&
+        now - router->last_sf_tick >= BC_SF_REBROADCAST_SEC) {
 
+        router->last_sf_tick = now;
+
+        bc_message_t **msgs = NULL;
+        size_t count = 0;
+
+        /* NULL pubkey = get ALL non-expired pending messages. */
+        if (router->storage->get_pending(router->storage,
+                                         NULL, &msgs, &count) == BC_OK) {
             for (size_t j = 0; j < count; j++) {
                 size_t needed = BC_MESSAGE_HEADER_SIZE + msgs[j]->payload_len;
                 uint8_t *buf = malloc(needed);
@@ -330,12 +349,7 @@ void bc_router_tick(bc_router_t *router)
                     size_t out_len;
                     if (bc_message_serialize(msgs[j], buf, needed,
                                             &out_len) == BC_OK) {
-                        if (router->transport->send(router->transport,
-                                                    router->peers[i].pubkey,
-                                                    buf, out_len) == BC_OK) {
-                            router->storage->delete_message(
-                                router->storage, msgs[j]->uuid);
-                        }
+                        forward_to_peers(router, buf, out_len);
                     }
                     free(buf);
                 }

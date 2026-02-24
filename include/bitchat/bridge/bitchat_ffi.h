@@ -47,13 +47,15 @@ BC_EXPORT int bitchat_init(const char *storage_path);
 /**
  * @brief Generate a new identity (X25519 keypair).
  *
- * The public key is written to @p pubkey_out. The secret key is stored
- * internally and never exposed.
+ * Both the public key and secret key are written to the caller's buffers.
+ * The secret key is also retained internally for encryption operations.
  *
  * @param pubkey_out  Output buffer for the public key (32 bytes).
+ * @param secret_out  Output buffer for the secret key (32 bytes, may be NULL).
  * @return 0 on success, negative error code on failure.
  */
-BC_EXPORT int bitchat_generate_identity(uint8_t pubkey_out[32]);
+BC_EXPORT int bitchat_generate_identity(uint8_t pubkey_out[32],
+                                         uint8_t secret_out[32]);
 
 /**
  * @brief Load an existing identity from a serialized buffer.
@@ -118,6 +120,35 @@ BC_EXPORT void bitchat_tick(void);
  * Closes the database, frees all memory, and wipes sensitive key material.
  */
 BC_EXPORT void bitchat_shutdown(void);
+
+/* ---------- Push-based message callback ---------- */
+
+/**
+ * @brief Callback invoked when a decrypted message arrives.
+ *
+ * The @p payload contains the decrypted plaintext. This callback may fire
+ * from any thread (e.g. the tick thread). The implementation MUST NOT call
+ * any bitchat_* function from within the callback — doing so will deadlock.
+ *
+ * @param sender   Sender's public key (32 bytes).
+ * @param payload  Decrypted plaintext.
+ * @param len      Length of @p payload.
+ */
+typedef void (*bitchat_on_message_fn)(const uint8_t sender[32],
+                                      const uint8_t *payload,
+                                      size_t len);
+
+/**
+ * @brief Register a push callback for incoming messages.
+ *
+ * When set, every message addressed to us will be decrypted and delivered
+ * via the callback in addition to being queued for bitchat_poll_messages().
+ * Pass NULL to unregister.
+ *
+ * @param callback  Callback function, or NULL to unregister.
+ * @return 0 on success, negative error code on failure.
+ */
+BC_EXPORT int bitchat_set_on_message_callback(bitchat_on_message_fn callback);
 
 #ifdef __cplusplus
 }
